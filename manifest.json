@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Schoology Submission Scroll Fix",
+  "version": "1.0",
+  "description": " This fixes the CSS on the submission page for teachers. Normally the page contains a long list of student submissions that does not scroll independantly. This fixes that so that you can scroll through students without scrolling past the current Google Doc submission.",
+  "icons": {
+    "16": "images/icon-16.png",
+    "32": "images/icon-32.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png",
+    "512": "images/icon-512.png"
+  },
+  "content_scripts": [
+    {
+      "js": ["scripts/content.js"],
+      "matches": [
+        "https://lms.lausd.net/assignments/*/submissions",
+        "https://lms.lausd.net/assignments/*/submissions/*",
+        "https://lms.lausd.net/assignments/*/info",
+        "https://lms.lausd.net/assignments/*/info/*",
+        "https://lms.lausd.net/assignments/*/inprogress",
+        "https://lms.lausd.net/assignments/*/inprogress/*"
+      ]
+    }
+  ]
+}
