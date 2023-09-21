@@ -7,7 +7,10 @@ function getElement(){
     element = elements[0];
     if(element && elements.length == 1 && location.href.indexOf("submissions") > -1){
         clearInterval(checking);
+
+        const doc = document.getElementsByClassName('SubmissionAppContainer')[0];
+
         element.style.overflow = "scroll";
-        element.style.height = "500px";
+        element.style.height = doc.offsetHeight+'px';
     }
 }
