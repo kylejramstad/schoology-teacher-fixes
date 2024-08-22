@@ -6,6 +6,7 @@ This extension fixes two issues for teachers.
 
 * Google Doc Assignment Scrolling Fix
 * Hide/Show student submissions
+* Previous and Next Student buttons added to Google Docs assignment grading
 
 ## Schoology Google Doc Scrolling Fix
 
@@ -27,3 +28,8 @@ This adds a hide/show button to student submissions on Schoology assignments. Th
 
 ![show](images/show.png)
 ![hide](images/hide.png)
+
+## Previous and Next Student Buttons for Google Doc Assignments
+
+### Example
+![buttons](images/buttons.png)
