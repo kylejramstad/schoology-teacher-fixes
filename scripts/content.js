@@ -98,7 +98,7 @@ function nextPrevious(){
                 nextBtn.id = 'nextBtn';
                 nextBtn.style.padding = '5px';
                 nextBtn.style.marginLeft = '5px';
-                nextBtn.textContent = "Next Student ->"
+                nextBtn.textContent = "Next Student →"
                 container.insertBefore(nextBtn, container.childNodes[0]);
                 nextBtn.addEventListener('click',nextStudent);
 
@@ -106,7 +106,7 @@ function nextPrevious(){
                 prevBtn.id = 'prevBtn';
                 prevBtn.style.padding = '5px';
                 nextBtn.style.marginRight = '5px';
-                prevBtn.textContent = "<- Previous Student"
+                prevBtn.textContent = "← Previous Student"
                 container.insertBefore(prevBtn, container.childNodes[0]);
                 prevBtn.addEventListener('click',prevStudent);
             }
