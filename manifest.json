@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Schoology Teacher Fixes",
-  "version": "1.0",
+  "version": "1.1",
   "description": " This fixes the CSS on the submission page for teachers. Normally the page contains a long list of student submissions that does not scroll independantly. It also adds a button for teachers to hide student submissions from an assignments page so it can be displayed in front of classes without sharing student grading information.",
   "icons": {
     "16": "images/icon-16.png",
