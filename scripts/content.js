@@ -82,6 +82,56 @@ function hideShow(){
     hideShowBtn.textContent = hide ?  'Show Submissions' : 'Hide Submissions';
 }
 
+// --- NEW GRADING NOTES LOGIC ---
+function createNotesPanel() {
+    // Only build the physical object once
+    if (document.getElementById('fs-notes-panel')) return; 
+
+    // Extract assignment ID to keep notes separate for different assignments
+    const assignmentIdMatch = window.location.href.match(/assignments\/(\d+)/);
+    const assignmentId = assignmentIdMatch ? assignmentIdMatch[1] : 'global';
+    const storageKey = `schoology_notes_${assignmentId}`;
+
+    // Create the main panel
+    const panel = document.createElement('div');
+    panel.id = 'fs-notes-panel';
+    // Manipulate spatial dimensions and force it to float above everything
+    panel.style.cssText = 'position: fixed; top: 70px; right: 20px; width: 320px; height: 400px; background: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999999; display: none; flex-direction: column; padding: 10px; box-sizing: border-box;';
+
+    // Header for the panel
+    const header = document.createElement('div');
+    header.style.cssText = 'font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #333; font-family: sans-serif;';
+    header.textContent = 'Grading Notes & Rubric';
+    
+    // Close button
+    const closeBtn = document.createElement('span');
+    closeBtn.innerHTML = '✖';
+    closeBtn.style.cssText = 'cursor: pointer; font-size: 14px; color: #888;';
+    closeBtn.onclick = () => panel.style.display = 'none';
+    header.appendChild(closeBtn);
+
+    // Text Area
+    const textArea = document.createElement('textarea');
+    textArea.id = 'fs-notes-textarea';
+    textArea.style.cssText = 'flex-grow: 1; resize: none; border: 1px solid #eee; padding: 8px; font-family: inherit; font-size: 14px; outline: none; background: #fdfdfd;';
+    textArea.placeholder = 'Type your grading criteria here. This saves automatically per assignment...';
+    
+    // Load existing notes from the browser's local storage
+    textArea.value = localStorage.getItem(storageKey) || '';
+
+    // Auto-save whenever you type
+    textArea.addEventListener('input', (e) => {
+        localStorage.setItem(storageKey, e.target.value);
+    });
+
+    panel.appendChild(header);
+    panel.appendChild(textArea);
+    
+    // Attach directly to the body so React doesn't destroy it when switching students
+    document.body.appendChild(panel);
+}
+// -----------------------------
+
 //Next and previous buttons for google doc assignments
 function nextPrevious(){
     if(location.href.indexOf('submissions') == -1 || document.getElementById("buttonContainer")){ //have to be on the submissions page only
@@ -101,6 +151,10 @@ function nextPrevious(){
         if(headers.length > 0){
             const header = headers[0];
             if(students.length >= 2){ //everything is loaded on the page and there are more than 1 student
+                
+                // Initialize the Notes Panel in the background
+                createNotesPanel();
+
                 //make container div
                 const container = document.createElement('div');
                 container.id = 'buttonContainer';
@@ -114,6 +168,20 @@ function nextPrevious(){
                 fullScreenBtn.textContent = "⛶ Full Screen";
                 container.appendChild(fullScreenBtn);
                 fullScreenBtn.addEventListener('click', toggleFullScreen);
+
+                //add notes button
+                const notesBtn = document.createElement('button');
+                notesBtn.id = 'notesBtn';
+                notesBtn.style.padding = '5px';
+                notesBtn.style.marginLeft = '15px';
+                notesBtn.textContent = "📝 Notes";
+                container.appendChild(notesBtn);
+                notesBtn.addEventListener('click', () => {
+                    const panel = document.getElementById('fs-notes-panel');
+                    if (panel) {
+                        panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+                    }
+                });
 
                 //add next button
                 const nextBtn = document.createElement('button');
@@ -209,6 +277,7 @@ function applyFullScreen() {
     const targetObject = docContainers[0]; 
     
     const btn = document.getElementById('fullScreenBtn');
+    const notesBtn = document.getElementById('notesBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     
@@ -311,10 +380,25 @@ function applyFullScreen() {
         'top': '10px',
         'right': '210px',
         'z-index': '999999',
-        'background-color': 'transparent', // Let the gray background show through
+        'background-color': 'transparent', 
         'padding': '5px 10px',
         'border-radius': '4px'
     });
+    
+    // 8. Elevate Notes Button (Right Side, left of Grading Block)
+    if (notesBtn) {
+        elevateAndNeutralize(notesBtn, {
+            'position': 'fixed',
+            'top': '15px',
+            'right': '380px',
+            'z-index': '999999',
+            'background-color': '#ffffff',
+            'color': '#000000',
+            'border': '1px solid #ccc',
+            'border-radius': '4px',
+            'padding': '5px'
+        });
+    }
 }
 
 function exitFullScreen() {
