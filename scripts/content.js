@@ -132,6 +132,11 @@ function nextPrevious(){
                 prevBtn.textContent = "← Previous Student";
                 container.insertBefore(prevBtn, container.childNodes[0]);
                 prevBtn.addEventListener('click',prevStudent);
+
+                // RE-APPLY full screen styles if the user navigated to the next student while in full screen mode
+                if (isFullScreen) {
+                    setTimeout(applyFullScreen, 200); 
+                }
             }
         } else {
              setTimeout(nextPrevious, 500);
@@ -144,137 +149,194 @@ function nextPrevious(){
 
 // --- FULL SCREEN LOGIC ---
 let isFullScreen = false;
-let originalDocStyles = {};
-let originalNextBtnCss = '';
-let originalPrevBtnCss = '';
-let modifiedAncestors = [];
+let modifiedElements = []; 
 let originalBodyOverflow = '';
 
-function toggleFullScreen(){
-    // Target the main wrapper object instead of the iframe
+// Helper to rip elements out of stacking contexts and elevate them
+function elevateAndNeutralize(element, newStyles) {
+    if (!element) return;
+    
+    // Save original styles for restoration
+    const originalStyles = {};
+    for (let prop in newStyles) {
+        originalStyles[prop] = element.style.getPropertyValue(prop);
+        element.style.setProperty(prop, newStyles[prop], 'important');
+    }
+    modifiedElements.push({ element: element, styles: originalStyles });
+
+    // Climb the DOM tree and strip any CSS that creates a restrictive bounding box
+    let parent = element.parentElement;
+    while(parent && parent !== document.documentElement && parent.tagName !== 'BODY') {
+        if (!modifiedElements.some(m => m.element === parent)) {
+            modifiedElements.push({
+                element: parent,
+                styles: {
+                    'transform': parent.style.getPropertyValue('transform'),
+                    'z-index': parent.style.getPropertyValue('z-index'),
+                    'overflow': parent.style.getPropertyValue('overflow'),
+                    'contain': parent.style.getPropertyValue('contain'),
+                    'clip-path': parent.style.getPropertyValue('clip-path')
+                }
+            });
+
+            parent.style.setProperty('transform', 'none', 'important');
+            parent.style.setProperty('z-index', 'auto', 'important');
+            parent.style.setProperty('overflow', 'visible', 'important');
+            parent.style.setProperty('contain', 'none', 'important');
+            parent.style.setProperty('clip-path', 'none', 'important');
+        }
+        parent = parent.parentElement;
+    }
+}
+
+function restoreStyles() {
+    for (let i = modifiedElements.length - 1; i >= 0; i--) {
+        const item = modifiedElements[i];
+        for (let prop in item.styles) {
+            if (item.styles[prop] === "" || item.styles[prop] === null) {
+                item.element.style.removeProperty(prop);
+            } else {
+                item.element.style.setProperty(prop, item.styles[prop]);
+            }
+        }
+    }
+    modifiedElements = [];
+}
+
+function applyFullScreen() {
     const docContainers = document.getElementsByClassName('SubmissionAppContainer');
     if(docContainers.length === 0) return; 
     const targetObject = docContainers[0]; 
     
     const btn = document.getElementById('fullScreenBtn');
-    const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
     
-    isFullScreen = !isFullScreen;
+    // Uses a wildcard selector to ensure we catch the grading container even if Schoology changes the ID hash
+    const gradingContainer = document.querySelector('[class*="document-header-aside-graded-container"]');
 
-    if(isFullScreen){
-        // Save original spatial dimensions and positioning
-        originalDocStyles = {
-            position: targetObject.style.position,
-            top: targetObject.style.top,
-            left: targetObject.style.left,
-            width: targetObject.style.width,
-            height: targetObject.style.height,
-            zIndex: targetObject.style.zIndex,
-            maxWidth: targetObject.style.maxWidth,
-            maxHeight: targetObject.style.maxHeight
-        };
-        
-        // Save original button CSS
-        if(nextBtn) originalNextBtnCss = nextBtn.style.cssText;
-        if(prevBtn) originalPrevBtnCss = prevBtn.style.cssText;
-        
-        // Traverse up the DOM to remove structural boundaries trapping the object
-        let parent = targetObject.parentElement;
-        while(parent && parent !== document.documentElement) {
-            const computed = window.getComputedStyle(parent);
-            if (computed.transform !== 'none' || computed.overflow !== 'visible' || computed.contain !== 'none' || computed.filter !== 'none') {
-                modifiedAncestors.push({
-                    element: parent,
-                    transform: parent.style.transform,
-                    overflow: parent.style.overflow,
-                    contain: parent.style.contain,
-                    filter: parent.style.filter
-                });
-                
-                // Neutralize parent boundaries
-                parent.style.setProperty('transform', 'none', 'important');
-                parent.style.setProperty('overflow', 'visible', 'important');
-                parent.style.setProperty('contain', 'none', 'important');
-                parent.style.setProperty('filter', 'none', 'important');
-            }
-            parent = parent.parentElement;
+    restoreStyles(); // Clear any previous state to prevent duplication
+
+    // 1. Create a physical dark gray background bar for our header
+    let headerBg = document.getElementById('fs-header-bg');
+    if(!headerBg) {
+        headerBg = document.createElement('div');
+        headerBg.id = 'fs-header-bg';
+        document.body.appendChild(headerBg);
+    }
+    headerBg.style.setProperty('display', 'block', 'important');
+    headerBg.style.setProperty('position', 'fixed', 'important');
+    headerBg.style.setProperty('top', '0', 'important');
+    headerBg.style.setProperty('left', '0', 'important');
+    headerBg.style.setProperty('width', '100vw', 'important');
+    headerBg.style.setProperty('height', '60px', 'important');
+    headerBg.style.setProperty('background', '#555555', 'important'); // Darker gray for white text readability
+    headerBg.style.setProperty('border-bottom', '1px solid #333', 'important');
+    headerBg.style.setProperty('z-index', '999997', 'important');
+
+    // 2. Inject CSS specifically to elevate the dynamic React Grading Modal
+    let modalStyleTag = document.getElementById('fs-modal-styles');
+    if (!modalStyleTag) {
+        modalStyleTag = document.createElement('style');
+        modalStyleTag.id = 'fs-modal-styles';
+        document.head.appendChild(modalStyleTag);
+    }
+    modalStyleTag.innerHTML = `
+        .ReactModalPortal,
+        .ReactModalPortal > div {
+            z-index: 9999999 !important;
         }
+    `;
 
-        // Lock the main background page from scrolling
-        originalBodyOverflow = document.body.style.overflow;
-        document.body.style.setProperty('overflow', 'hidden', 'important');
+    // 3. Lock body scrolling
+    originalBodyOverflow = document.body.style.overflow;
+    document.body.style.setProperty('overflow', 'hidden', 'important');
 
-        // Expand object's dimensions to fill the viewport
-        targetObject.style.setProperty('position', 'fixed', 'important');
-        targetObject.style.setProperty('top', '0', 'important');
-        targetObject.style.setProperty('left', '0', 'important');
-        targetObject.style.setProperty('width', '100vw', 'important');
-        targetObject.style.setProperty('height', '100vh', 'important');
-        targetObject.style.setProperty('max-width', '100%', 'important');
-        targetObject.style.setProperty('max-height', '100%', 'important');
-        targetObject.style.setProperty('z-index', '999998', 'important'); 
-        
-        // Detach exit button and float it over the object (Top Right)
-        btn.textContent = "✖ Exit Full Screen (Esc)";
-        btn.style.setProperty('position', 'fixed', 'important');
-        btn.style.setProperty('top', '15px', 'important');
-        btn.style.setProperty('right', '20px', 'important');
-        btn.style.setProperty('z-index', '999999', 'important');
-        
-        // Float Next Button (Top Right, shifted left of Exit button)
-        if(nextBtn) {
-            nextBtn.style.setProperty('position', 'fixed', 'important');
-            nextBtn.style.setProperty('top', '15px', 'important');
-            nextBtn.style.setProperty('right', '210px', 'important');
-            nextBtn.style.setProperty('left', 'auto', 'important'); // Overrides inline left
-            nextBtn.style.setProperty('z-index', '999999', 'important');
-            nextBtn.style.setProperty('background-color', '#ffffff', 'important');
-            nextBtn.style.setProperty('box-shadow', '0 2px 5px rgba(0,0,0,0.3)', 'important');
-        }
+    // 4. Elevate Document Container
+    elevateAndNeutralize(targetObject, {
+        'position': 'fixed',
+        'top': '60px',
+        'left': '0',
+        'width': '100vw',
+        'height': 'calc(100vh - 60px)',
+        'max-width': '100%',
+        'max-height': '100%',
+        'z-index': '999996'
+    });
 
-        // Float Previous Button (Top Right, shifted left of Next button)
-        if(prevBtn) {
-            prevBtn.style.setProperty('position', 'fixed', 'important');
-            prevBtn.style.setProperty('top', '15px', 'important');
-            prevBtn.style.setProperty('right', '350px', 'important');
-            prevBtn.style.setProperty('left', 'auto', 'important'); // Overrides inline left
-            prevBtn.style.setProperty('z-index', '999999', 'important');
-            prevBtn.style.setProperty('background-color', '#ffffff', 'important');
-            prevBtn.style.setProperty('box-shadow', '0 2px 5px rgba(0,0,0,0.3)', 'important');
-        }
-        
-    } else {
-        // Restore object dimensions
-        targetObject.style.position = originalDocStyles.position;
-        targetObject.style.top = originalDocStyles.top;
-        targetObject.style.left = originalDocStyles.left;
-        targetObject.style.width = originalDocStyles.width;
-        targetObject.style.height = originalDocStyles.height;
-        targetObject.style.zIndex = originalDocStyles.zIndex;
-        targetObject.style.maxWidth = originalDocStyles.maxWidth;
-        targetObject.style.maxHeight = originalDocStyles.maxHeight;
-        
-        // Restore parent boundaries
-        modifiedAncestors.forEach(item => {
-            item.element.style.transform = item.transform;
-            item.element.style.overflow = item.overflow;
-            item.element.style.contain = item.contain;
-            item.element.style.filter = item.filter;
+    // 5. Elevate Nav Buttons (Left Side)
+    if (prevBtn) elevateAndNeutralize(prevBtn, {
+        'position': 'fixed',
+        'top': '15px',
+        'left': '20px',
+        'z-index': '999999',
+        'background-color': '#ffffff',
+        'color': '#000000',
+        'border': '1px solid #ccc',
+        'border-radius': '4px',
+        'padding': '5px'
+    });
+
+    if (nextBtn) elevateAndNeutralize(nextBtn, {
+        'position': 'fixed',
+        'top': '15px',
+        'left': '170px',
+        'z-index': '999999',
+        'background-color': '#ffffff',
+        'color': '#000000',
+        'border': '1px solid #ccc',
+        'border-radius': '4px',
+        'padding': '5px'
+    });
+
+    // 6. Elevate Exit Button (Right Side)
+    if (btn) {
+        elevateAndNeutralize(btn, {
+            'position': 'fixed',
+            'top': '15px',
+            'right': '20px',
+            'z-index': '999999',
+            'background-color': '#ffffff',
+            'color': '#000000',
+            'border': '1px solid #ccc',
+            'border-radius': '4px',
+            'padding': '5px'
         });
-        modifiedAncestors = [];
+        btn.textContent = "✖ Exit Full Screen (Esc)";
+    }
 
-        // Restore body scrolling
-        document.body.style.overflow = originalBodyOverflow;
+    // 7. Elevate Grading Block (Right Side, next to Exit)
+    if (gradingContainer) elevateAndNeutralize(gradingContainer, {
+        'position': 'fixed',
+        'top': '10px',
+        'right': '210px',
+        'z-index': '999999',
+        'background-color': 'transparent', // Let the gray background show through
+        'padding': '5px 10px',
+        'border-radius': '4px'
+    });
+}
 
-        // Return Exit button to the header
-        btn.textContent = "⛶ Full Screen";
-        btn.style.position = 'static';
-        btn.style.zIndex = 'auto';
-        
-        // Restore Next and Previous buttons
-        if(nextBtn) nextBtn.style.cssText = originalNextBtnCss;
-        if(prevBtn) prevBtn.style.cssText = originalPrevBtnCss;
+function exitFullScreen() {
+    const headerBg = document.getElementById('fs-header-bg');
+    if(headerBg) headerBg.style.setProperty('display', 'none', 'important');
+
+    const modalStyleTag = document.getElementById('fs-modal-styles');
+    if (modalStyleTag) modalStyleTag.remove(); // Remove modal override when exiting
+
+    restoreStyles();
+    document.body.style.overflow = originalBodyOverflow;
+    
+    const btn = document.getElementById('fullScreenBtn');
+    if (btn) btn.textContent = "⛶ Full Screen";
+}
+
+function toggleFullScreen(){
+    isFullScreen = !isFullScreen;
+    if(isFullScreen){
+        applyFullScreen();
+    } else {
+        exitFullScreen();
     }
 }
 
