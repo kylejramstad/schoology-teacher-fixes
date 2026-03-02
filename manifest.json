@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Schoology Teacher Fixes",
-  "version": "1.1",
-  "description": "Fixes CSS on the submission page, adds a hide/show button for privacy, includes Next/Previous grading buttons, and adds a Full-Screen document view.",
+  "version": "1.2",
+  "description": "Fixes CSS on the submission page, adds privacy toggles, includes Next/Previous buttons, and manipulates the spatial dimensions of the page to add a Full-Screen view and a floating Notes object.",
   "icons": {
     "16": "images/icon-16.png",
     "32": "images/icon-32.png",
