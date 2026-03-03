@@ -193,7 +193,7 @@ function nextPrevious(){
         
         if(headers.length > 0){
             const header = headers[0];
-            if(students.length >= 2){ //everything is loaded on the page and there are more than 1 student
+            if(students.length >= 1){ //everything is loaded on the page if there is at least 1 student submission
                 
                 // Initialize the Notes Panel in the background
                 createNotesPanel();
