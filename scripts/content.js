@@ -95,18 +95,18 @@ function createNotesPanel() {
     // Create the main panel
     const panel = document.createElement('div');
     panel.id = 'fs-notes-panel';
-    // Manipulate spatial dimensions and force it to float above everything
+    // Establish initial spatial dimensions and positioning
     panel.style.cssText = 'position: fixed; top: 70px; right: 20px; width: 320px; height: 400px; background: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999999; display: none; flex-direction: column; padding: 10px; box-sizing: border-box;';
 
-    // Header for the panel
+    // Header for the panel (This will act as our drag handle)
     const header = document.createElement('div');
-    header.style.cssText = 'font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #333; font-family: sans-serif;';
+    header.style.cssText = 'font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #333; font-family: sans-serif; cursor: move; user-select: none; padding-bottom: 5px; border-bottom: 1px solid #eee;';
     header.textContent = 'Grading Notes & Rubric';
     
     // Close button
     const closeBtn = document.createElement('span');
     closeBtn.innerHTML = '✖';
-    closeBtn.style.cssText = 'cursor: pointer; font-size: 14px; color: #888;';
+    closeBtn.style.cssText = 'cursor: pointer; font-size: 14px; color: #888; padding: 2px;';
     closeBtn.onclick = () => panel.style.display = 'none';
     header.appendChild(closeBtn);
 
@@ -129,6 +129,49 @@ function createNotesPanel() {
     
     // Attach directly to the body so React doesn't destroy it when switching students
     document.body.appendChild(panel);
+
+    // --- DRAG LOGIC: Manipulate spatial dimensions ---
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    header.addEventListener('mousedown', (e) => {
+        if (e.target === closeBtn) return; // Ignore drag if clicking the close button
+        
+        isDragging = true;
+        
+        // Lock in current spatial coordinates of the object
+        const rect = panel.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        // Release 'right' alignment so 'left' can drive the spatial movement smoothly
+        panel.style.right = 'auto';
+        panel.style.left = initialLeft + 'px';
+        panel.style.top = initialTop + 'px';
+
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+    });
+
+    function dragMove(e) {
+        if (!isDragging) return;
+        e.preventDefault(); 
+        
+        // Calculate the physical delta and apply it to the object's spatial dimensions
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        panel.style.left = (initialLeft + dx) + 'px';
+        panel.style.top = (initialTop + dy) + 'px';
+    }
+
+    function dragEnd() {
+        isDragging = false;
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('mouseup', dragEnd);
+    }
 }
 // -----------------------------
 
